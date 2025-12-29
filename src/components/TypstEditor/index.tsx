@@ -166,10 +166,10 @@ export default function TypstEditor() {
 					<div 
 						style={{ 
 							width: `${editorResize.value}px`,
-							flexShrink: 0,
-							flexGrow: 0,
 							minWidth: `${EDITOR_MIN_WIDTH}px`,
+							maxWidth: `${editorResize.value}px`,
 						}}
+						className="shrink-0"
 					>
 						<CodeEditor
 							filePath={activeFilePath}
@@ -197,10 +197,9 @@ export default function TypstEditor() {
 
 					{/* PDF Preview - Takes remaining space */}
 					<div 
+						className="flex-1 min-w-0"
 						style={{ 
-							flex: '1 1 auto',
 							minWidth: `${PREVIEW_MIN_WIDTH}px`,
-							overflow: 'hidden',
 						}}
 					>
 						<PdfPreview

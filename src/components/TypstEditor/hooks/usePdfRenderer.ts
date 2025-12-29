@@ -12,8 +12,12 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom }: UsePdfRendererProp
 	const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null)
 	const [totalPages, setTotalPages] = useState(1)
 	const [isRendering, setIsRendering] = useState(false)
+	const [containerWidth, setContainerWidth] = useState(0)
 	const canvasRef = useRef<HTMLCanvasElement>(null)
 	const containerRef = useRef<HTMLDivElement>(null)
+	const resizeObserverRef = useRef<ResizeObserver | null>(null)
+	const observerSetupRef = useRef(false)
+	const renderTaskRef = useRef<any>(null)
 
 	// Load PDF document when URL changes
 	useEffect(() => {
@@ -43,13 +47,40 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom }: UsePdfRendererProp
 		}
 	}, [pdfUrl])
 
-	// Render current page when page number or zoom changes
+	// Render current page when page number, zoom, or container width changes
 	useEffect(() => {
 		if (!pdfDoc || !canvasRef.current || !containerRef.current) return
+
+		// Set up ResizeObserver once when we know the container exists
+		if (!observerSetupRef.current) {
+			const parentElement = containerRef.current.parentElement
+			if (parentElement) {
+				setContainerWidth(parentElement.clientWidth)
+				
+				resizeObserverRef.current = new ResizeObserver((entries) => {
+					for (const entry of entries) {
+						const width = entry.contentRect.width
+						setContainerWidth(width)
+					}
+				})
+				
+				resizeObserverRef.current.observe(parentElement)
+				observerSetupRef.current = true
+			}
+		}
 
 		let mounted = true
 
 		const renderPage = async () => {
+			// Cancel any ongoing render operation
+			if (renderTaskRef.current) {
+				try {
+					renderTaskRef.current.cancel()
+				} catch (e) {
+					// Ignore cancellation errors
+				}
+			}
+
 			setIsRendering(true)
 			try {
 				const page = await pdfDoc.getPage(currentPage)
@@ -61,12 +92,15 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom }: UsePdfRendererProp
 				const context = canvas.getContext('2d')
 				if (!context) return
 
-				// Calculate scale to fit container width
-				const containerWidth = container.clientWidth
+				// Use the tracked container width, fallback to current width if not yet set
+				const fullWidth = containerWidth || container.clientWidth
+				// Account for padding (p-6 = 24px on each side = 48px total)
+				const paddingTotal = 48
+				const availableWidth = fullWidth - paddingTotal
 				const viewport = page.getViewport({ scale: 1 })
 				
 				// Apply zoom scaling
-				const scale = (zoom / 100) * (containerWidth / viewport.width)
+				const scale = (zoom / 100) * (availableWidth / viewport.width)
 				const scaledViewport = page.getViewport({ scale })
 
 				// Set canvas dimensions
@@ -80,13 +114,17 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom }: UsePdfRendererProp
 					canvas: canvas
 				}
 
-				await page.render(renderContext).promise
+				renderTaskRef.current = page.render(renderContext)
+				await renderTaskRef.current.promise
+				renderTaskRef.current = null
 				
 				if (mounted) {
 					setIsRendering(false)
 				}
-			} catch (error) {
-				console.error('Failed to render page:', error)
+			} catch (error: any) {
+				if (error?.name !== 'RenderingCancelledException') {
+					console.error('Failed to render page:', error)
+				}
 				if (mounted) {
 					setIsRendering(false)
 				}
@@ -97,8 +135,25 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom }: UsePdfRendererProp
 
 		return () => {
 			mounted = false
+			// Cancel render task on cleanup
+			if (renderTaskRef.current) {
+				try {
+					renderTaskRef.current.cancel()
+				} catch (e) {
+					// Ignore cancellation errors
+				}
+			}
 		}
-	}, [pdfDoc, currentPage, zoom])
+	}, [pdfDoc, currentPage, zoom, containerWidth])
+
+	// Cleanup ResizeObserver on unmount
+	useEffect(() => {
+		return () => {
+			if (resizeObserverRef.current) {
+				resizeObserverRef.current.disconnect()
+			}
+		}
+	}, [])
 
 	return {
 		totalPages,
