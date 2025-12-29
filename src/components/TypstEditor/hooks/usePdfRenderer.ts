@@ -9,16 +9,21 @@ interface UsePdfRendererProps {
 	isCollapsed: boolean
 }
 
+interface CanvasInfo {
+	canvas: HTMLCanvasElement
+	renderTask: RenderTask | null
+}
+
 export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed }: UsePdfRendererProps) {
 	const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null)
 	const [totalPages, setTotalPages] = useState(1)
 	const [isRendering, setIsRendering] = useState(false)
 	const [containerWidth, setContainerWidth] = useState(0)
-	const canvasRef = useRef<HTMLCanvasElement | null>(null)
+	const canvasRefs = useRef<Map<number, CanvasInfo>>(new Map())
 	const containerRef = useRef<HTMLDivElement | null>(null)
+	const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 	const resizeObserverRef = useRef<ResizeObserver | null>(null)
 	const observerSetupRef = useRef(false)
-	const renderTaskRef = useRef<RenderTask | null>(null)
 
 	// Load PDF document when URL changes
 	useEffect(() => {
@@ -48,9 +53,20 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed }: UsePd
 		}
 	}, [pdfUrl])
 
-	// Render current page when page number, zoom, or container width changes
+	// Scroll to current page when it changes
 	useEffect(() => {
-		if (!pdfDoc || !canvasRef.current || !containerRef.current) return
+		const pageElement = pageRefs.current.get(currentPage)
+		if (pageElement) {
+			pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+		}
+	}, [currentPage])
+
+	// Render all pages when document, zoom, or container width changes
+	useEffect(() => {
+		if (!pdfDoc || !containerRef.current) return
+
+		// Capture the current canvas refs for cleanup
+		const canvasRefsSnapshot = canvasRefs.current
 
 		// Set up ResizeObserver once when we know the container exists
 		if (!observerSetupRef.current) {
@@ -72,71 +88,81 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed }: UsePd
 
 		let mounted = true
 
-		const renderPage = async () => {
-			// Cancel any ongoing render operation
-			if (renderTaskRef.current) {
-				try {
-					renderTaskRef.current.cancel()
-				} catch {
-					// Ignore cancellation errors
+		const renderAllPages = async () => {
+			// Cancel any ongoing render operations
+			canvasRefs.current.forEach((canvasInfo) => {
+				if (canvasInfo.renderTask) {
+					try {
+						canvasInfo.renderTask.cancel()
+					} catch {
+						// Ignore cancellation errors
+					}
 				}
-			}
+			})
 
 			setIsRendering(true)
 			try {
-				const page = await pdfDoc.getPage(currentPage) as PDFPageProxy
-				const canvas = canvasRef.current
 				const container = containerRef.current
-				
-				if (!mounted || !canvas || !container) return
-
-				const context = canvas.getContext('2d', {
-					alpha: false,
-					desynchronized: true
-				}) as CanvasRenderingContext2D | null
-				if (!context) return
+				if (!mounted || !container) return
 
 				// Use the tracked container width, fallback to current width if not yet set
 				const fullWidth = containerWidth || container.clientWidth
 				// Account for padding (p-6 = 24px on each side = 48px total)
 				const paddingTotal = 48
 				const availableWidth = fullWidth - paddingTotal
-				const viewport = page.getViewport({ scale: 1 })
-				
-				// Apply zoom scaling
-				const scale = (zoom / 100) * (availableWidth / viewport.width)
-				
-				// Get device pixel ratio for high-DPI displays (retina, etc.)
-				// Use a minimum of 2 for better quality even on standard displays
-				const pixelRatio = Math.max(window.devicePixelRatio || 1, 4)
-				
-				// Render at higher resolution for crisp output
-				const outputScale = scale * pixelRatio
-				const scaledViewport = page.getViewport({ scale: outputScale })
 
-				// Set canvas actual size (high resolution for crisp rendering)
-				canvas.width = scaledViewport.width
-				canvas.height = scaledViewport.height
+				// Render each page
+				for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+					const page = await pdfDoc.getPage(pageNum) as PDFPageProxy
+					const canvasInfo = canvasRefs.current.get(pageNum)
+					
+					if (!mounted || !canvasInfo) continue
 
-				// Set canvas display size (CSS size)
-				canvas.style.width = `${scaledViewport.width / pixelRatio}px`
-				canvas.style.height = `${scaledViewport.height / pixelRatio}px`
+					const canvas = canvasInfo.canvas
+					const context = canvas.getContext('2d', {
+						alpha: false,
+						desynchronized: true
+					}) as CanvasRenderingContext2D | null
+					if (!context) continue
 
-				// Disable image smoothing for crisp text rendering
-				context.imageSmoothingEnabled = false
+					const viewport = page.getViewport({ scale: 1 })
+					
+					// Apply zoom scaling
+					const scale = (zoom / 100) * (availableWidth / viewport.width)
+					
+					// Get device pixel ratio for high-DPI displays (retina, etc.)
+					// Use a minimum of 2 for better quality even on standard displays
+					const pixelRatio = Math.max(window.devicePixelRatio || 1, 4)
+					
+					// Render at higher resolution for crisp output
+					const outputScale = scale * pixelRatio
+					const scaledViewport = page.getViewport({ scale: outputScale })
 
-				// Render PDF page
-				const renderContext = {
-					canvasContext: context,
-					viewport: scaledViewport,
-					canvas: canvas
+					// Set canvas actual size (high resolution for crisp rendering)
+					canvas.width = scaledViewport.width
+					canvas.height = scaledViewport.height
+
+					// Set canvas display size (CSS size)
+					canvas.style.width = `${scaledViewport.width / pixelRatio}px`
+					canvas.style.height = `${scaledViewport.height / pixelRatio}px`
+
+					// Disable image smoothing for crisp text rendering
+					context.imageSmoothingEnabled = false
+
+					// Render PDF page
+					const renderContext = {
+						canvasContext: context,
+						viewport: scaledViewport,
+						canvas: canvas
+					}
+
+					const renderTask = page.render(renderContext)
+					canvasInfo.renderTask = renderTask
+					if (renderTask && renderTask.promise) {
+						await renderTask.promise
+					}
+					canvasInfo.renderTask = null
 				}
-
-				renderTaskRef.current = page.render(renderContext)
-				if (renderTaskRef.current && renderTaskRef.current.promise) {
-					await renderTaskRef.current.promise
-				}
-				renderTaskRef.current = null
 				
 				if (mounted) {
 					setIsRendering(false)
@@ -144,7 +170,7 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed }: UsePd
 			} catch (error: unknown) {
 				const err = error as { name?: string }
 				if (err?.name !== 'RenderingCancelledException') {
-					console.error('Failed to render page:', error)
+					console.error('Failed to render pages:', error)
 				}
 				if (mounted) {
 					setIsRendering(false)
@@ -152,20 +178,22 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed }: UsePd
 			}
 		}
 
-		renderPage()
+		renderAllPages()
 
 		return () => {
 			mounted = false
-			// Cancel render task on cleanup
-			if (renderTaskRef.current) {
-				try {
-					renderTaskRef.current.cancel()
-				} catch (e) {
-					// Ignore cancellation errors
+			// Cancel render tasks on cleanup
+			canvasRefsSnapshot.forEach((canvasInfo) => {
+				if (canvasInfo.renderTask) {
+					try {
+						canvasInfo.renderTask.cancel()
+					} catch {
+						// Ignore cancellation errors
+					}
 				}
-			}
+			})
 		}
-	}, [pdfDoc, currentPage, zoom, containerWidth, isCollapsed])
+	}, [pdfDoc, zoom, containerWidth, isCollapsed])
 
 	// Cleanup ResizeObserver on unmount
 	useEffect(() => {
@@ -179,7 +207,8 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed }: UsePd
 	return {
 		totalPages,
 		isRendering,
-		canvasRef,
+		canvasRefs,
+		pageRefs,
 		containerRef
 	}
 }

@@ -22,7 +22,7 @@ export default function PdfPreview({ pdfUrl, status, errorMsg, hasCompiled, isCo
 	const [zoom, setZoom] = useState(100)
 	const [currentPage, setCurrentPage] = useState(1)
 	
-	const { totalPages, isRendering, canvasRef, containerRef } = usePdfRenderer({
+	const { totalPages, isRendering, canvasRefs, pageRefs, containerRef } = usePdfRenderer({
 		pdfUrl,
 		currentPage,
 		zoom,
@@ -55,9 +55,11 @@ export default function PdfPreview({ pdfUrl, status, errorMsg, hasCompiled, isCo
 				<>
 					{pdfUrl ? (
 						<PdfCanvas
-							canvasRef={canvasRef}
+							canvasRefs={canvasRefs}
+							pageRefs={pageRefs}
 							containerRef={containerRef}
 							isRendering={isRendering}
+							totalPages={totalPages}
 						/>
 					) : (
 						<PdfPlaceholder
