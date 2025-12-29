@@ -36,7 +36,7 @@ export default function PdfPreview({ pdfUrl, status, errorMsg, hasCompiled, isCo
 	const handleNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages))
 	
 	return (
-		<div className="h-full flex flex-col bg-gray-800">
+		<div className="h-full flex py-1 flex-col bg-gray-800">
 			<PdfToolbar
 				pdfUrl={pdfUrl}
 				currentPage={currentPage}
