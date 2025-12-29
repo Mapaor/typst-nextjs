@@ -1,7 +1,11 @@
 'use client'
 
-import { Loader2, XCircle } from 'lucide-react'
+import { useState } from 'react'
 import type { CompileStatus } from '@/lib/typst/TypstCompilerService'
+import { usePdfRenderer } from './hooks/usePdfRenderer'
+import PdfToolbar from './PdfToolbar'
+import PdfCanvas from './PdfCanvas'
+import PdfPlaceholder from './PdfPlaceholder'
 
 interface PdfPreviewProps {
 	pdfUrl: string | null
@@ -12,50 +16,48 @@ interface PdfPreviewProps {
 	charCount: number
 }
 
-export default function PdfPreview({ pdfUrl, status, errorMsg, hasCompiled, fileCount, charCount }: PdfPreviewProps) {
+export default function PdfPreview({ pdfUrl, status, errorMsg, hasCompiled }: PdfPreviewProps) {
+	const [zoom, setZoom] = useState(100)
+	const [currentPage, setCurrentPage] = useState(1)
+	
+	const { totalPages, isRendering, canvasRef, containerRef } = usePdfRenderer({
+		pdfUrl,
+		currentPage,
+		zoom
+	})
+	
+	const handleZoomIn = () => setZoom(prev => Math.min(prev + 25, 200))
+	const handleZoomOut = () => setZoom(prev => Math.max(prev - 25, 50))
+	const handleZoomFit = () => setZoom(100)
+	const handlePrevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1))
+	const handleNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages))
+	
 	return (
 		<div className="h-full flex flex-col bg-gray-800">
+			<PdfToolbar
+				pdfUrl={pdfUrl}
+				currentPage={currentPage}
+				totalPages={totalPages}
+				zoom={zoom}
+				onPrevPage={handlePrevPage}
+				onNextPage={handleNextPage}
+				onZoomIn={handleZoomIn}
+				onZoomOut={handleZoomOut}
+				onZoomFit={handleZoomFit}
+			/>
+			
 			{pdfUrl ? (
-				<iframe
-					src={pdfUrl}
-					title="PDF Preview"
-					className="w-full h-full border-0"
+				<PdfCanvas
+					canvasRef={canvasRef}
+					containerRef={containerRef}
+					isRendering={isRendering}
 				/>
 			) : (
-				<div className="flex-1 flex items-center justify-center">
-					<div className="text-center text-gray-400">
-						{status === 'compiling' && (
-							<p className="text-lg flex items-center justify-center gap-2">
-								<Loader2 className="w-5 h-5 animate-spin" />
-								{hasCompiled ? 'Compiling...' : 'Initializing compiler...'}
-							</p>
-						)}
-						{status === 'error' && (
-							<>
-								<p className="text-lg text-red-500 flex items-center justify-center gap-2">
-									<XCircle className="w-5 h-5" />
-									Error
-								</p>
-								<pre className="mt-2 text-sm text-left max-w-2xl overflow-auto p-4 bg-gray-900 rounded">
-									{errorMsg}
-								</pre>
-							</>
-						)}
-						{status === 'idle' && (
-							<p className="text-lg">
-								{hasCompiled 
-									? 'Type to edit and compile' 
-									: 'Click "Compile Now" or start typing to generate PDF'}
-							</p>
-						)}
-						{status === 'done' && (
-							<p className="text-lg text-gray-400">Compilation complete</p>
-						)}
-						<p className="mt-4 text-sm">
-							{fileCount} file(s) • {charCount} chars
-						</p>
-					</div>
-				</div>
+				<PdfPlaceholder
+					status={status}
+					errorMsg={errorMsg}
+					hasCompiled={hasCompiled}
+				/>
 			)}
 		</div>
 	)
