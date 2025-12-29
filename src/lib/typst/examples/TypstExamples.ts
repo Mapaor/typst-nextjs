@@ -3,6 +3,8 @@ export interface TypstExample {
 	name: string
 	description: string
 	filePath: string // Path to .typ file in public folder
+	isMultiFile?: boolean
+	additionalFiles?: Array<{ path: string; filePath: string }>
 }
 
 export const TYPST_EXAMPLES: TypstExample[] = [
@@ -23,6 +25,18 @@ export const TYPST_EXAMPLES: TypstExample[] = [
 		name: 'Academic Report',
 		description: 'A structured document with sections and formatting',
 		filePath: '/typst-examples/report.typ'
+	},
+	{
+		id: 'multi-file',
+		name: 'Multi-File Document',
+		description: 'Document with multiple files, imports, and includes',
+		filePath: '/typst-examples/multi-file-main.typ',
+		isMultiFile: true,
+		additionalFiles: [
+			{ path: 'multi-file-template.typ', filePath: '/typst-examples/multi-file-template.typ' },
+			{ path: 'multi-file-chapter-1.typ', filePath: '/typst-examples/multi-file-chapter-1.typ' },
+			{ path: 'multi-file-chapter-2.typ', filePath: '/typst-examples/multi-file-chapter-2.typ' },
+		]
 	}
 ]
 

@@ -40,15 +40,15 @@ export class TypstCompilerService {
 	}
 
 	/**
-	 * Compile Typst code to PDF
+	 * Compile Typst project to PDF
 	 */
-	async compile(code: string): Promise<CompileResult> {
+	async compile(files: Record<string, string>, mainFile: string): Promise<CompileResult> {
 		const seq = ++this.compileSeq
 
 		this.notifyStatusChange('compiling')
 
 		try {
-			const result = await this.client.compilePdf(code, {})
+			const result = await this.client.compilePdf(files, mainFile, {})
 
 			// Check if this compile was superseded by a newer one
 			if (seq !== this.compileSeq) {

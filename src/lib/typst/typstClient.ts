@@ -1,7 +1,8 @@
 type CompileRequest = {
 	type: 'compile';
 	id: string;
-	mainTypst: string;
+	files: Record<string, string>;
+	mainFile: string;
 	images?: Record<string, Uint8Array<ArrayBuffer>>;
 };
 
@@ -58,11 +59,12 @@ export class TypstWorkerClient {
 	}
 
 	compilePdf(
-		mainTypst: string,
+		files: Record<string, string>,
+		mainFile: string,
 		images: Record<string, Uint8Array<ArrayBuffer>> = {}
 	): Promise<{ pdf: Uint8Array<ArrayBuffer>; diagnostics: string[] }> {
 		const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Date.now());
-		const request: CompileRequest = { type: 'compile', id, mainTypst, images };
+		const request: CompileRequest = { type: 'compile', id, files, mainFile, images };
 
 		return new Promise((resolve, reject) => {
 			this.#pending.set(id, { resolve, reject });

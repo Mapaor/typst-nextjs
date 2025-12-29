@@ -9,7 +9,8 @@ import { createTypstCompiler, loadFonts, type TypstCompiler } from '@myriaddream
 type CompileRequest = {
 	type: 'compile';
 	id: string;
-	mainTypst: string;
+	files: Record<string, string>; // Map of file path to content
+	mainFile: string; // Which file to compile
 	images?: Record<string, Uint8Array<ArrayBuffer>>;
 };
 
@@ -148,30 +149,42 @@ function getCompiler(): Promise<TypstCompiler> {
 // ============================================================================
 
 async function compilePdf(
-	mainTypst: string,
+	files: Record<string, string>,
+	mainFile: string,
 	images: Record<string, Uint8Array<ArrayBuffer>> = {}
 ): Promise<{ pdf: Uint8Array; diagnostics: string[] }> {
-	// Check for emoji and upgrade compiler if needed
-	if (needsEmojiFont(mainTypst)) {
+	// Check for emoji in all files and upgrade compiler if needed
+	const allContent = Object.values(files).join('\n');
+	if (needsEmojiFont(allContent)) {
 		await upgradeCompilerWithEmoji();
 	}
 
 	const compiler = await getCompiler();
-	compiler.addSource('/main.typ', mainTypst);
+	
+	// Add all source files to the virtual file system
+	for (const [path, content] of Object.entries(files)) {
+		// Ensure paths start with /
+		const normalizedPath = path.startsWith('/') ? path : '/' + path;
+		compiler.addSource(normalizedPath, content);
+	}
 
+	// Add images
 	for (const [path, data] of Object.entries(images)) {
 		compiler.mapShadow('/' + path, data);
 	}
 
+	// Ensure mainFile path starts with /
+	const normalizedMainFile = mainFile.startsWith('/') ? mainFile : '/' + mainFile;
+
 	const result = await compiler.compile({
-		mainFilePath: '/main.typ',
+		mainFilePath: normalizedMainFile,
 		format: 1,
 		diagnostics: 'unix'
 	});
 
 	const diagnostics = (result.diagnostics ?? []).map(String);
 	if (!result.result) {
-		throw new Error(diagnostics.join('\n') || 'Typst 编译失败（无诊断信息）');
+		throw new Error(diagnostics.join('\n') || 'Typst compilation failed (no diagnostics)');
 	}
 
 	return { pdf: result.result, diagnostics };
@@ -187,7 +200,7 @@ ctx.onmessage = (event: MessageEvent<CompileRequest>) => {
 
 	compileQueue = compileQueue.then(async () => {
 		try {
-			const { pdf, diagnostics } = await compilePdf(message.mainTypst, message.images);
+			const { pdf, diagnostics } = await compilePdf(message.files, message.mainFile, message.images);
 			const pdfCopy = new Uint8Array(pdf.length);
 			pdfCopy.set(pdf);
 			ctx.postMessage(
