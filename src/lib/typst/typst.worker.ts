@@ -33,31 +33,28 @@ type CompileResponse =
 // Configuration
 // ============================================================================
 
-const TYPST_VERSION = '0.7.0-rc2';
-const TYPST_WASM_URL = `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@${TYPST_VERSION}/pkg/typst_ts_web_compiler_bg.wasm`;
+// const TYPST_VERSION = '0.7.0-rc2';
+// CDN: https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@${TYPST_VERSION}/pkg/typst_ts_web_compiler_bg.wasm
+const TYPST_WASM_URL = '/wasm/typst_ts_web_compiler_bg.wasm';
 
 const CORE_FONTS: string[] = [
-	// IBM Plex Sans (Modern UI) - Part of typst-dev-assets
-	'https://cdn.jsdelivr.net/gh/typst/typst-dev-assets@v0.13.1/files/fonts/IBMPlexSans-Regular.ttf',
-	'https://cdn.jsdelivr.net/gh/typst/typst-dev-assets@v0.13.1/files/fonts/IBMPlexSans-Bold.ttf',
+	// IBM Plex Sans (Modern UI)
+	// CDN: https://cdn.jsdelivr.net/gh/typst/typst-dev-assets@v0.13.1/files/fonts/IBMPlexSans-Regular.ttf
+	'/fonts/IBMPlexSans-Regular.ttf',
+	// CDN: https://cdn.jsdelivr.net/gh/typst/typst-dev-assets@v0.13.1/files/fonts/IBMPlexSans-Bold.ttf
+	'/fonts/IBMPlexSans-Bold.ttf',
 
-	// Math font (Critical for mathematical formulas) - Part of typst-assets
-	'https://cdn.jsdelivr.net/gh/typst/typst-assets@v0.13.1/files/fonts/NewCMMath-Regular.otf',
-	'https://cdn.jsdelivr.net/gh/typst/typst-assets@v0.13.1/files/fonts/NewCMMath-Book.otf'
-];
-
-const CJK_FONTS: string[] = [
-	// Sans CJK (Simplified Chinese) - Noto Sans CJK SC (~15MB)
-	'https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf',
-	'https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Bold.otf',
-
-	// Serif CJK (Simplified Chinese) - Noto Serif SC from Google Fonts (~14MB)
-	'https://fonts.gstatic.com/s/notoserifsc/v35/H4cyBXePl9DZ0Xe7gG9cyOj7uK2-n-D2rd4FY7SCqyWv.ttf'
+	// Math fonts (Critical for mathematical formulas)
+	// CDN: https://cdn.jsdelivr.net/gh/typst/typst-assets@v0.13.1/files/fonts/NewCMMath-Regular.otf
+	'/fonts/NewCMMath-Regular.otf',
+	// CDN: https://cdn.jsdelivr.net/gh/typst/typst-assets@v0.13.1/files/fonts/NewCMMath-Book.otf
+	'/fonts/NewCMMath-Book.otf'
 ];
 
 const EMOJI_FONTS: string[] = [
 	// Emoji font (Noto Color Emoji) (~9MB)
-	'https://fonts.gstatic.com/s/notocoloremoji/v37/Yq6P-KqIXTD0t4D9z1ESnKM3-HpFab4.ttf'
+	// CDN: https://fonts.gstatic.com/s/notocoloremoji/v37/Yq6P-KqIXTD0t4D9z1ESnKM3-HpFab4.ttf
+	'/fonts/NotoColorEmoji.ttf'
 ];
 
 // ============================================================================
@@ -68,7 +65,6 @@ const ctx: DedicatedWorkerGlobalScope = self as unknown as DedicatedWorkerGlobal
 
 let compilerPromise: Promise<TypstCompiler> | null = null;
 let compileQueue: Promise<void> = Promise.resolve();
-let cjkLoaded = false;
 let emojiLoaded = false;
 
 // ============================================================================
@@ -100,40 +96,28 @@ async function createCompilerWithFonts(fonts: string[]): Promise<TypstCompiler> 
 }
 
 /**
- * Detects if text requires CJK or emoji fonts
+ * Detects if text requires emoji fonts
  */
-function detectFontRequirements(text: string): { needsCjk: boolean; needsEmoji: boolean } {
-	const hasCjk = /[\u4e00-\u9fa5]/.test(text);
-	const hasEmoji = /[\uD800-\uDFFF]|[\u2600-\u26FF]|[\u2700-\u27BF]/.test(text);
-	return { needsCjk: hasCjk, needsEmoji: hasEmoji };
+function needsEmojiFont(text: string): boolean {
+	return /[\uD800-\uDFFF]|[\u2600-\u26FF]|[\u2700-\u27BF]/.test(text);
 }
 
 /**
  * Gets the current font set based on loaded fonts
  */
 function getCurrentFonts(): string[] {
-	const fonts = [...CORE_FONTS];
-	if (cjkLoaded) fonts.push(...CJK_FONTS);
-	if (emojiLoaded) fonts.push(...EMOJI_FONTS);
-	return fonts;
+	return emojiLoaded ? [...CORE_FONTS, ...EMOJI_FONTS] : CORE_FONTS;
 }
 
 // ============================================================================
 // Compiler Management
 // ============================================================================
 
-async function upgradeCompiler(needCjk: boolean, needEmoji: boolean): Promise<void> {
-	// Check if we need to upgrade
-	const shouldUpgradeCjk = needCjk && !cjkLoaded;
-	const shouldUpgradeEmoji = needEmoji && !emojiLoaded;
+async function upgradeCompilerWithEmoji(): Promise<void> {
+	if (emojiLoaded) return;
 
-	if (!shouldUpgradeCjk && !shouldUpgradeEmoji) return;
-
-	// Update state
-	if (shouldUpgradeCjk) cjkLoaded = true;
-	if (shouldUpgradeEmoji) emojiLoaded = true;
-
-	console.log(`Typst - Upgrading compiler (CJK: ${cjkLoaded}, Emoji: ${emojiLoaded})...`);
+	emojiLoaded = true;
+	console.log('Typst - Upgrading compiler with emoji fonts...');
 	
 	const newCompiler = await createCompilerWithFonts(getCurrentFonts());
 	compilerPromise = Promise.resolve(newCompiler);
@@ -156,11 +140,9 @@ async function compilePdf(
 	mainTypst: string,
 	images: Record<string, Uint8Array<ArrayBuffer>> = {}
 ): Promise<{ pdf: Uint8Array; diagnostics: string[] }> {
-	// Check for special characters and upgrade compiler if needed
-	const { needsCjk, needsEmoji } = detectFontRequirements(mainTypst);
-	
-	if (needsCjk || needsEmoji) {
-		await upgradeCompiler(needsCjk, needsEmoji);
+	// Check for emoji and upgrade compiler if needed
+	if (needsEmojiFont(mainTypst)) {
+		await upgradeCompilerWithEmoji();
 	}
 
 	const compiler = await getCompiler();
