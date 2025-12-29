@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { getPdfjs } from '@/lib/pdf/pdfjs'
-import type { PDFDocumentProxy } from 'pdfjs-dist'
+import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist'
 
 interface UsePdfRendererProps {
 	pdfUrl: string | null
@@ -14,11 +14,11 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed }: UsePd
 	const [totalPages, setTotalPages] = useState(1)
 	const [isRendering, setIsRendering] = useState(false)
 	const [containerWidth, setContainerWidth] = useState(0)
-	const canvasRef = useRef<HTMLCanvasElement>(null)
-	const containerRef = useRef<HTMLDivElement>(null)
+	const canvasRef = useRef<HTMLCanvasElement | null>(null)
+	const containerRef = useRef<HTMLDivElement | null>(null)
 	const resizeObserverRef = useRef<ResizeObserver | null>(null)
 	const observerSetupRef = useRef(false)
-	const renderTaskRef = useRef<any>(null)
+	const renderTaskRef = useRef<RenderTask | null>(null)
 
 	// Load PDF document when URL changes
 	useEffect(() => {
@@ -77,23 +77,23 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed }: UsePd
 			if (renderTaskRef.current) {
 				try {
 					renderTaskRef.current.cancel()
-				} catch (e) {
+				} catch {
 					// Ignore cancellation errors
 				}
 			}
 
 			setIsRendering(true)
 			try {
-				const page = await pdfDoc.getPage(currentPage)
+				const page = await pdfDoc.getPage(currentPage) as PDFPageProxy
 				const canvas = canvasRef.current
 				const container = containerRef.current
 				
 				if (!mounted || !canvas || !container) return
 
-				const context = canvas.getContext('2d', { 
+				const context = canvas.getContext('2d', {
 					alpha: false,
 					desynchronized: true
-				})
+				}) as CanvasRenderingContext2D | null
 				if (!context) return
 
 				// Use the tracked container width, fallback to current width if not yet set
@@ -133,14 +133,17 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed }: UsePd
 				}
 
 				renderTaskRef.current = page.render(renderContext)
-				await renderTaskRef.current.promise
+				if (renderTaskRef.current && renderTaskRef.current.promise) {
+					await renderTaskRef.current.promise
+				}
 				renderTaskRef.current = null
 				
 				if (mounted) {
 					setIsRendering(false)
 				}
-			} catch (error: any) {
-				if (error?.name !== 'RenderingCancelledException') {
+			} catch (error: unknown) {
+				const err = error as { name?: string }
+				if (err?.name !== 'RenderingCancelledException') {
 					console.error('Failed to render page:', error)
 				}
 				if (mounted) {
