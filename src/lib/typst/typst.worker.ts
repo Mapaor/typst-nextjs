@@ -2,6 +2,10 @@
 
 import { createTypstCompiler, loadFonts, type TypstCompiler } from '@myriaddreamin/typst.ts';
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
 type CompileRequest = {
 	type: 'compile';
 	id: string;
@@ -25,10 +29,12 @@ type CompileResponse =
 			diagnostics: string[];
 	  };
 
-const ctx: DedicatedWorkerGlobalScope = self as unknown as DedicatedWorkerGlobalScope;
+// ============================================================================
+// Configuration
+// ============================================================================
 
-let compilerPromise: Promise<TypstCompiler> | null = null;
-let compileQueue: Promise<void> = Promise.resolve();
+const TYPST_VERSION = '0.7.0-rc2';
+const TYPST_WASM_URL = `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@${TYPST_VERSION}/pkg/typst_ts_web_compiler_bg.wasm`;
 
 const CORE_FONTS: string[] = [
 	// IBM Plex Sans (Modern UI) - Part of typst-dev-assets
@@ -54,80 +60,107 @@ const EMOJI_FONTS: string[] = [
 	'https://fonts.gstatic.com/s/notocoloremoji/v37/Yq6P-KqIXTD0t4D9z1ESnKM3-HpFab4.ttf'
 ];
 
+// ============================================================================
+// State Management
+// ============================================================================
+
+const ctx: DedicatedWorkerGlobalScope = self as unknown as DedicatedWorkerGlobalScope;
+
+let compilerPromise: Promise<TypstCompiler> | null = null;
+let compileQueue: Promise<void> = Promise.resolve();
 let cjkLoaded = false;
 let emojiLoaded = false;
 
-async function upgradeCompiler(needCjk: boolean, needEmoji: boolean) {
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Fetches the Typst WASM module from CDN
+ */
+async function fetchWasmModule(): Promise<ArrayBuffer> {
+	const response = await fetch(TYPST_WASM_URL);
+	return await response.arrayBuffer();
+}
+
+/**
+ * Creates a compiler with specified fonts
+ */
+async function createCompilerWithFonts(fonts: string[]): Promise<TypstCompiler> {
+	const compiler = createTypstCompiler();
+	await compiler.init({
+		getModule: fetchWasmModule,
+		beforeBuild: [
+			loadFonts(fonts, {
+				assets: ['text']
+			})
+		]
+	});
+	return compiler;
+}
+
+/**
+ * Detects if text requires CJK or emoji fonts
+ */
+function detectFontRequirements(text: string): { needsCjk: boolean; needsEmoji: boolean } {
+	const hasCjk = /[\u4e00-\u9fa5]/.test(text);
+	const hasEmoji = /[\uD800-\uDFFF]|[\u2600-\u26FF]|[\u2700-\u27BF]/.test(text);
+	return { needsCjk: hasCjk, needsEmoji: hasEmoji };
+}
+
+/**
+ * Gets the current font set based on loaded fonts
+ */
+function getCurrentFonts(): string[] {
+	const fonts = [...CORE_FONTS];
+	if (cjkLoaded) fonts.push(...CJK_FONTS);
+	if (emojiLoaded) fonts.push(...EMOJI_FONTS);
+	return fonts;
+}
+
+// ============================================================================
+// Compiler Management
+// ============================================================================
+
+async function upgradeCompiler(needCjk: boolean, needEmoji: boolean): Promise<void> {
 	// Check if we need to upgrade
 	const shouldUpgradeCjk = needCjk && !cjkLoaded;
 	const shouldUpgradeEmoji = needEmoji && !emojiLoaded;
 
 	if (!shouldUpgradeCjk && !shouldUpgradeEmoji) return;
 
+	// Update state
 	if (shouldUpgradeCjk) cjkLoaded = true;
 	if (shouldUpgradeEmoji) emojiLoaded = true;
 
-	console.log(`MDXport - Upgrading compiler (CJK: ${cjkLoaded}, Emoji: ${emojiLoaded})...`);
+	console.log(`Typst - Upgrading compiler (CJK: ${cjkLoaded}, Emoji: ${emojiLoaded})...`);
 	
-	const fontsToLoad = [...CORE_FONTS];
-	if (cjkLoaded) fontsToLoad.push(...CJK_FONTS);
-	if (emojiLoaded) fontsToLoad.push(...EMOJI_FONTS);
-
-	const newCompiler = createTypstCompiler();
-	await newCompiler.init({
-		getModule: async () => {
-			// Fetch WASM module directly in Next.js
-			const wasmUrl = 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@0.7.0-rc2/pkg/typst_ts_web_compiler_bg.wasm'
-			const response = await fetch(wasmUrl)
-			return await response.arrayBuffer()
-		},
-		beforeBuild: [
-			loadFonts(fontsToLoad, {
-				assets: ['text']
-			})
-		]
-	});
-	
-	// Swap the compiler promise
+	const newCompiler = await createCompilerWithFonts(getCurrentFonts());
 	compilerPromise = Promise.resolve(newCompiler);
-	console.log('MDXport - Compiler upgraded successfully.');
+	
+	console.log('Typst - Compiler upgraded successfully.');
 }
 
 function getCompiler(): Promise<TypstCompiler> {
 	if (compilerPromise) return compilerPromise;
 
-	compilerPromise = (async () => {
-		const compiler = createTypstCompiler();
-		await compiler.init({
-			getModule: async () => {
-				// Fetch WASM module directly in Next.js
-				const wasmUrl = 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@0.7.0-rc2/pkg/typst_ts_web_compiler_bg.wasm'
-				const response = await fetch(wasmUrl)
-				return await response.arrayBuffer()
-			},
-			beforeBuild: [
-				loadFonts(CORE_FONTS, {
-					assets: ['text'] // Load standard Typst fonts (~18MB), includes math and common Latin fonts
-				})
-			]
-		});
-		return compiler;
-	})();
-
+	compilerPromise = createCompilerWithFonts(CORE_FONTS);
 	return compilerPromise;
 }
+
+// ============================================================================
+// Compilation
+// ============================================================================
 
 async function compilePdf(
 	mainTypst: string,
 	images: Record<string, Uint8Array<ArrayBuffer>> = {}
 ): Promise<{ pdf: Uint8Array; diagnostics: string[] }> {
-	// Check for special characters
-	const hasCjk = /[\u4e00-\u9fa5]/.test(mainTypst);
-	// Broad emoji detection regex (ES5 compatible)
-	const hasEmoji = /[\uD800-\uDFFF]|[\u2600-\u26FF]|[\u2700-\u27BF]/.test(mainTypst);
+	// Check for special characters and upgrade compiler if needed
+	const { needsCjk, needsEmoji } = detectFontRequirements(mainTypst);
 	
-	if (hasCjk || hasEmoji) {
-		await upgradeCompiler(hasCjk, hasEmoji);
+	if (needsCjk || needsEmoji) {
+		await upgradeCompiler(needsCjk, needsEmoji);
 	}
 
 	const compiler = await getCompiler();
@@ -150,6 +183,10 @@ async function compilePdf(
 
 	return { pdf: result.result, diagnostics };
 }
+
+// ============================================================================
+// Message Handler
+// ============================================================================
 
 ctx.onmessage = (event: MessageEvent<CompileRequest>) => {
 	const message = event.data;
