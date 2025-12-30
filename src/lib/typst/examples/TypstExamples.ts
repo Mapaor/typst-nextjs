@@ -27,10 +27,27 @@ export const TYPST_EXAMPLES: TypstExample[] = [
 		filePath: '/typst-examples/report/main.typ'
 	},
 	{
+		id: 'using-images',
+		name: 'Using Images',
+		description: 'Demonstrate how to use images in Typst documents',
+		filePath: '/typst-examples/using-images/main.typ',
+		isMultiFile: true,
+		additionalFiles: [
+			{ path: 'cat-image.jpg', filePath: '/typst-examples/using-images/cat-image.jpg' },
+			{ path: 'star-image.png', filePath: '/typst-examples/using-images/star-image.png' },
+		]
+	},
+	{
 		id: 'mitex',
 		name: 'Using a Package',
 		description: 'Using Mitex package from the Typst Universe',
 		filePath: '/typst-examples/mitex/main.typ'
+	},
+	{
+		id: 'using-templates',
+		name: 'Using a Template',
+		description: 'Using Graceful-Genetics template (Oxford Physics) from the Typst Universe',
+		filePath: '/typst-examples/using-templates/main.typ'
 	},
 	{
 		id: 'multi-file',
@@ -42,17 +59,6 @@ export const TYPST_EXAMPLES: TypstExample[] = [
 			{ path: 'template.typ', filePath: '/typst-examples/multi-file/template.typ' },
 			{ path: 'chapters/chapter-1.typ', filePath: '/typst-examples/multi-file/chapters/chapter-1.typ' },
 			{ path: 'chapters/chapter-2.typ', filePath: '/typst-examples/multi-file/chapters/chapter-2.typ' },
-		]
-	},
-	{
-		id: 'using-images',
-		name: 'Using Images',
-		description: 'Demonstrate how to use images in Typst documents',
-		filePath: '/typst-examples/using-images/main.typ',
-		isMultiFile: true,
-		additionalFiles: [
-			{ path: 'cat-image.jpg', filePath: '/typst-examples/using-images/cat-image.jpg' },
-			{ path: 'star-image.png', filePath: '/typst-examples/using-images/star-image.png' },
 		]
 	},
 	{
