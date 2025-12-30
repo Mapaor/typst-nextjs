@@ -102,6 +102,7 @@ let compileQueue: Promise<void> = Promise.resolve();
 let emojiLoaded = false;
 let cjkLoaded = false;
 let lastCompileTime = Date.now();
+const loadedCustomFonts: Set<string> = new Set(); // Track custom font files
 
 // Package registry for Typst Universe packages (mitex, cetz, fletcher, etc.)
 const accessModel = new MemoryAccessModel();
@@ -125,9 +126,13 @@ async function fetchWasmModule(): Promise<ArrayBuffer> {
 }
 
 /**
- * Converts relative font URLs to absolute URLs
+ * Converts relative font URLs to absolute URLs (skips data URLs)
  */
 function resolveFont(fontPath: string): string {
+	// Data URLs should be passed through unchanged
+	if (fontPath.startsWith('data:')) {
+		return fontPath;
+	}
 	return new URL(fontPath, self.location.origin).href;
 }
 
@@ -136,7 +141,7 @@ function resolveFont(fontPath: string): string {
  */
 async function createCompilerWithFonts(fonts: string[]): Promise<TypstCompiler> {
 	const compiler = createTypstCompiler();
-	// Resolve all font paths to absolute URLs
+	// Resolve font paths to absolute URLs (data URLs are passed through)
 	const absoluteFonts = fonts.map(resolveFont);
 	await compiler.init({
 		getModule: fetchWasmModule,
@@ -174,6 +179,33 @@ function getCurrentFonts(): string[] {
 	if (emojiLoaded) fonts.push(...EMOJI_FONTS);
 	if (cjkLoaded) fonts.push(...CJK_FONTS);
 	return fonts;
+}
+
+/**
+ * Detects custom font files in the images/fonts collection
+ */
+function detectCustomFonts(images: Record<string, Uint8Array<ArrayBuffer>>): string[] {
+	return Object.keys(images).filter(path => 
+		path.toLowerCase().endsWith('.ttf') || 
+		path.toLowerCase().endsWith('.otf')
+	);
+}
+
+/**
+ * Converts Uint8Array font data to data URL for font loading
+ */
+function fontDataToUrl(data: Uint8Array<ArrayBuffer>, filename: string): string {
+	const extension = filename.toLowerCase().split('.').pop();
+	const mimeType = extension === 'ttf' ? 'font/ttf' : 'font/otf';
+	
+	// Convert Uint8Array to base64
+	let binary = '';
+	for (let i = 0; i < data.length; i++) {
+		binary += String.fromCharCode(data[i]);
+	}
+	const base64 = btoa(binary);
+	
+	return `data:${mimeType};base64,${base64}`;
 }
 
 // ============================================================================
@@ -220,6 +252,7 @@ function getCompiler(): Promise<TypstCompiler> {
 		compilerPromise = null;
 		emojiLoaded = false;
 		cjkLoaded = false;
+		loadedCustomFonts.clear();
 	}
 
 	if (compilerPromise) return compilerPromise;
@@ -230,6 +263,36 @@ function getCompiler(): Promise<TypstCompiler> {
 }
 
 /**
+ * Reinitializes compiler with custom fonts included
+ */
+async function reinitializeWithCustomFonts(
+	images: Record<string, Uint8Array<ArrayBuffer>>,
+	customFontPaths: string[]
+): Promise<void> {
+	console.log('[Typst] Reinitializing compiler with custom fonts:', customFontPaths);
+	
+	// Convert custom font data to data URLs
+	const customFontUrls = customFontPaths.map(path => 
+		fontDataToUrl(images[path], path)
+	);
+	
+	// Combine all fonts: core + optional (emoji/cjk) + custom
+	const allFonts = [
+		...getCurrentFonts(),
+		...customFontUrls
+	];
+	
+	// Create new compiler with all fonts
+	const newCompiler = await createCompilerWithFonts(allFonts);
+	compilerPromise = Promise.resolve(newCompiler);
+	
+	// Track loaded custom fonts
+	customFontPaths.forEach(path => loadedCustomFonts.add(path));
+	
+	console.log('[Typst] Custom fonts loaded successfully');
+}
+
+/**
  * Manually reset compiler (useful for memory management)
  */
 function resetCompiler(): void {
@@ -237,6 +300,7 @@ function resetCompiler(): void {
 	compilerPromise = null;
 	emojiLoaded = false;
 	cjkLoaded = false;
+	loadedCustomFonts.clear();
 }
 
 // ============================================================================
@@ -251,16 +315,25 @@ async function compilePdf(
 	// Update last compile time for lifecycle management
 	lastCompileTime = Date.now();
 
+	// Check for custom fonts in uploaded files
+	const customFontPaths = detectCustomFonts(images);
+	const hasNewCustomFonts = customFontPaths.some(path => !loadedCustomFonts.has(path));
+	
+	// If new custom fonts are detected, reinitialize compiler
+	if (hasNewCustomFonts) {
+		await reinitializeWithCustomFonts(images, customFontPaths);
+	}
+
 	// Check content for special font requirements and upgrade compiler if needed
 	const allContent = Object.values(files).join('\n');
 	
-	// Lazy load emoji fonts
-	if (needsEmojiFont(allContent)) {
+	// Lazy load emoji fonts (only if no custom fonts were just loaded)
+	if (!hasNewCustomFonts && needsEmojiFont(allContent)) {
 		await upgradeCompilerWithEmoji();
 	}
 	
-	// Lazy load CJK fonts
-	if (needsCJKFont(allContent)) {
+	// Lazy load CJK fonts (only if no custom fonts were just loaded)
+	if (!hasNewCustomFonts && needsCJKFont(allContent)) {
 		await upgradeCompilerWithCJK();
 	}
 

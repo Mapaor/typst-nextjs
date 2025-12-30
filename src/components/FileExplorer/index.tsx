@@ -100,8 +100,8 @@ export default function FileExplorer({
 
 			try {
 				// Read file content based on type
-				if (file.name.match(/\.(png|jpg|svg)$/i)) {
-					// For images, read as data URL
+				if (file.name.match(/\.(png|jpg|jpeg|svg|ttf|otf)$/i)) {
+					// For binary files (images and fonts), read as data URL
 					const reader = new FileReader()
 					reader.onload = (e) => {
 						const content = e.target?.result as string

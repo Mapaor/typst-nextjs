@@ -54,6 +54,17 @@ export const TYPST_EXAMPLES: TypstExample[] = [
 			{ path: 'cat-image.jpg', filePath: '/typst-examples/using-images/cat-image.jpg' },
 			{ path: 'star-image.png', filePath: '/typst-examples/using-images/star-image.png' },
 		]
+	},
+	{
+		id: 'using-fonts',
+		name: 'Using Fonts',
+		description: 'Demonstrate how to use custom fonts in Typst documents',
+		filePath: '/typst-examples/using-fonts/main.typ',
+		isMultiFile: true,
+		additionalFiles: [
+			{ path: 'RobotoRegular.ttf', filePath: '/typst-examples/using-fonts/RobotoRegular.ttf' },
+			{ path: 'Andropabe.ttf', filePath: '/typst-examples/using-fonts/Andropabe.ttf' },
+		]
 	}
 ]
 
@@ -68,9 +79,11 @@ export async function fetchExample(filePath: string): Promise<string> {
 	
 	// Check if this is an image file
 	const isImage = /\.(png|jpg|jpeg|svg)$/i.test(filePath)
+	// Check if this is a font file
+	const isFont = /\.(ttf|otf)$/i.test(filePath)
 	
-	if (isImage) {
-		// For images, convert to base64 data URL
+	if (isImage || isFont) {
+		// For binary files (images and fonts), convert to base64 data URL
 		const blob = await response.blob()
 		return new Promise((resolve, reject) => {
 			const reader = new FileReader()

@@ -48,15 +48,15 @@ export class TypstCompilerService {
 		this.notifyStatusChange('compiling')
 
 		try {
-			// Separate text files from images
+			// Separate text files from binary files (images and fonts)
 			const textFiles: Record<string, string> = {}
 			const images: Record<string, Uint8Array<ArrayBuffer>> = {}
 
 			for (const [path, content] of Object.entries(files)) {
-				// Check if this is an image file (data URL)
-				if (content.startsWith('data:image/')) {
+				// Check if this is a binary file (data URL for images or fonts)
+				if (content.startsWith('data:')) {
 					// Extract base64 data and convert to Uint8Array
-					const base64Match = content.match(/^data:image\/[^;]+;base64,(.+)$/)
+					const base64Match = content.match(/^data:[^;]+;base64,(.+)$/)
 					if (base64Match) {
 						try {
 							const base64Data = base64Match[1]
@@ -67,7 +67,7 @@ export class TypstCompilerService {
 							}
 							images[path] = bytes as Uint8Array<ArrayBuffer>
 						} catch (error) {
-							console.error(`Failed to decode image ${path}:`, error)
+							console.error(`Failed to decode binary file ${path}:`, error)
 						}
 					}
 				} else {
