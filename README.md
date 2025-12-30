@@ -20,3 +20,14 @@ Credits mainly to Myriad-Dreamin for the creation of [typst.ts](https://github.c
 
 MIT License.
 
+This repo code is MIT Licensed, however the libraries used are:
+- @myriaddreamin/typst-ts-renderer"
+- @myriaddreamin/typst-ts-web-compiler"
+- @myriaddreamin/typst.ts"
+- pdf.js
+- pdfjs-dist
+
+Which are, under Apache-2.0 license. At the same time Typst.ts uses the Typst compiler which is also licensed under Apache-2.0 license.
+
+The Lucide icons used are licensed under MIT.
+
