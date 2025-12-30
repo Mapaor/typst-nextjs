@@ -22,7 +22,7 @@ export default function PdfPreview({ pdfUrl, status, errorMsg, hasCompiled, isCo
 	const [zoom, setZoom] = useState(100)
 	const [currentPage, setCurrentPage] = useState(1)
 	
-	const { totalPages, isRendering, canvasRefs, pageRefs, textLayerRefs, containerRef, scrollToPage } = usePdfRenderer({
+	const { totalPages, isRendering, canvasRefs, pageRefs, textLayerRefs, annotationLayerRefs, containerRef, scrollToPage } = usePdfRenderer({
 		pdfUrl,
 		currentPage,
 		zoom,
@@ -59,6 +59,7 @@ export default function PdfPreview({ pdfUrl, status, errorMsg, hasCompiled, isCo
 							canvasRefs={canvasRefs}
 							pageRefs={pageRefs}
 							textLayerRefs={textLayerRefs}
+							annotationLayerRefs={annotationLayerRefs}
 							containerRef={containerRef}
 							isRendering={isRendering}
 							totalPages={totalPages}

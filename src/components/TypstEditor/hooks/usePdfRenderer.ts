@@ -22,6 +22,7 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed, onPageC
 	const [containerWidth, setContainerWidth] = useState(0)
 	const canvasRefs = useRef<Map<number, CanvasInfo>>(new Map())
 	const textLayerRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+	const annotationLayerRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 	const containerRef = useRef<HTMLDivElement | null>(null)
 	const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 	const resizeObserverRef = useRef<ResizeObserver | null>(null)
@@ -204,6 +205,59 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed, onPageC
 							console.error('Failed to render text layer:', error)
 						}
 					}
+					
+					// Render annotation layer for clickable links
+					const annotationLayerDiv = annotationLayerRefs.current.get(pageNum)
+					if (annotationLayerDiv) {
+						// Clear previous annotation layer content
+						annotationLayerDiv.innerHTML = ''
+						annotationLayerDiv.style.width = `${scaledViewport.width / pixelRatio}px`
+						annotationLayerDiv.style.height = `${scaledViewport.height / pixelRatio}px`
+						
+						try {
+							const annotations = await page.getAnnotations()
+							const pdfjs = await getPdfjs()
+							
+							// Create annotation layer instance
+							const annotationLayer = new pdfjs.AnnotationLayer({
+								div: annotationLayerDiv,
+								page,
+								viewport: textLayerViewport.clone({ dontFlip: true }),
+								annotationStorage: null,
+								accessibilityManager: null,
+								annotationCanvasMap: null,
+								annotationEditorUIManager: null,
+								structTreeLayer: null,
+								commentManager: null,
+								linkService: {
+									externalLinkTarget: 2, // LINK_TARGET.BLANK - open in new tab
+									externalLinkRel: 'noopener noreferrer nofollow',
+									externalLinkEnabled: true,
+									getDestinationHash: () => '',
+									getAnchorUrl: (hash: string) => hash,
+									addLinkAttributes: (link: HTMLAnchorElement, url: string) => {
+										link.href = url
+										link.target = '_blank'
+										link.rel = 'noopener noreferrer nofollow'
+									}
+								}
+							})
+							
+							// Render annotation layer
+						// Type assertion needed due to incorrect TypeScript definitions in pdfjs-dist
+						// The render method actually accepts these parameters (see PDF.js source)
+						await annotationLayer.render({
+							annotations,
+							imageResourcesPath: '',
+							renderForms: false,
+							enableScripting: false,
+							hasJSActions: false,
+							fieldObjects: null
+						} as unknown as Parameters<typeof annotationLayer.render>[0])
+						} catch (error) {
+							console.error('Failed to render annotation layer:', error)
+						}
+					}
 				}
 				
 				if (mounted) {
@@ -307,6 +361,7 @@ export function usePdfRenderer({ pdfUrl, currentPage, zoom, isCollapsed, onPageC
 		canvasRefs,
 		pageRefs,
 		textLayerRefs,
+		annotationLayerRefs,
 		containerRef,
 		scrollToPage
 	}

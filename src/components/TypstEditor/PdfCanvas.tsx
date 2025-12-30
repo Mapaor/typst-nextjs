@@ -11,12 +11,13 @@ interface PdfCanvasProps {
 	canvasRefs: MutableRefObject<Map<number, CanvasInfo>>
 	pageRefs: MutableRefObject<Map<number, HTMLDivElement>>
 	textLayerRefs: MutableRefObject<Map<number, HTMLDivElement>>
+	annotationLayerRefs: MutableRefObject<Map<number, HTMLDivElement>>
 	containerRef: RefObject<HTMLDivElement | null>
 	isRendering: boolean
 	totalPages: number
 }
 
-export default function PdfCanvas({ canvasRefs, pageRefs, textLayerRefs, containerRef, isRendering, totalPages }: PdfCanvasProps) {
+export default function PdfCanvas({ canvasRefs, pageRefs, textLayerRefs, annotationLayerRefs, containerRef, isRendering, totalPages }: PdfCanvasProps) {
 	return (
 		<div className="preview-container relative flex-1 bg-gray-100">
 			{isRendering && (
@@ -59,6 +60,14 @@ export default function PdfCanvas({ canvasRefs, pageRefs, textLayerRefs, contain
 										}
 									}}
 									className="textLayer"
+								/>
+								<div
+									ref={(el) => {
+										if (el) {
+											annotationLayerRefs.current.set(pageNum, el)
+										}
+									}}
+									className="annotationLayer"
 								/>
 							</div>
 						</div>

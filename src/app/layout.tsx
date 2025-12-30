@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./pdfjs-textlayer.css";
+import "./pdfjs-annotationlayer.css";
 
 export const metadata: Metadata = {
   title: "Typst Online",
