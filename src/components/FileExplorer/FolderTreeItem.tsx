@@ -18,6 +18,7 @@ interface FolderTreeItemProps {
 	onDelete: () => void
 	onDragOver: (e: React.DragEvent) => void
 	onDrop: (e: React.DragEvent) => void
+	onExternalDrop?: (e: React.DragEvent, path: string) => void
 	children?: React.ReactNode
 }
 
@@ -38,6 +39,7 @@ export default function FolderTreeItem({
 	onDelete,
 	onDragOver,
 	onDrop,
+	onExternalDrop,
 	children,
 }: FolderTreeItemProps) {
 	const folderName = node.path.split('/').pop() || node.path
@@ -83,8 +85,22 @@ export default function FolderTreeItem({
 					onToggle()
 					onSelect()
 				}}
-				onDragOver={onDragOver}
-				onDrop={onDrop}
+				onDragOver={(e) => {
+					if (e.dataTransfer.types.includes('Files')) {
+						e.preventDefault()
+						e.stopPropagation()
+						e.dataTransfer.dropEffect = 'copy'
+					} else {
+						onDragOver(e)
+					}
+				}}
+				onDrop={(e) => {
+					if (e.dataTransfer.types.includes('Files') && onExternalDrop) {
+						onExternalDrop(e, node.path)
+					} else {
+						onDrop(e)
+					}
+				}}
 			>
 				<div className="flex items-center gap-2 flex-1 min-w-0">
 					{isExpanded ? (

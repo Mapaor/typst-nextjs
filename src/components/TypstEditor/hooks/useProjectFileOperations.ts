@@ -33,7 +33,7 @@ export function useProjectFileOperations({
 		setActiveFilePath(path)
 	}
 
-	const handleFileCreate = (path: string) => {
+	const handleFileCreate = (path: string, initialContent?: string) => {
 		if (currentProject.files.some(f => f.path === path)) {
 			alert('A file with this name already exists!')
 			return
@@ -41,7 +41,7 @@ export function useProjectFileOperations({
 
 		const newFile: ProjectFile = {
 			path,
-			content: `// ${path}\n\n`,
+			content: initialContent ?? `// ${path}\n\n`,
 			lastModified: 0,
 		}
 

@@ -79,17 +79,19 @@ export default function TypstEditorHeader({
 						<ChevronDown className="w-4 h-4" />
 					</button>
 					{showExamples && (
-						<div className="absolute top-full left-0 mt-1 w-64 bg-gray-800 border border-gray-700 rounded shadow-lg z-50">
-							{TYPST_EXAMPLES.map((example) => (
-								<button
-									key={example.id}
-									className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700 last:border-b-0"
-									onClick={() => onLoadExample(example.id)}
-								>
-									<div className="font-medium">{example.name}</div>
-									<div className="text-sm text-gray-400">{example.description}</div>
-								</button>
-							))}
+						<div className="absolute top-full left-0 mt-1 w-lg max-h-114 overflow-y-auto bg-gray-800 border border-gray-700 rounded shadow-lg z-50">
+							<div className="grid grid-cols-2">
+								{TYPST_EXAMPLES.map((example) => (
+									<button
+										key={example.id}
+										className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700 border-r last:border-r-0 odd:border-r"
+										onClick={() => onLoadExample(example.id)}
+									>
+										<div className="font-medium">{example.name}</div>
+										<div className="text-sm text-gray-400">{example.description}</div>
+									</button>
+								))}
+							</div>
 						</div>
 					)}
 				</div>

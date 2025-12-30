@@ -10,7 +10,7 @@ export interface FileExplorerProps {
 	project: Project
 	activeFile: string
 	onFileSelect: (path: string) => void
-	onFileCreate: (path: string) => void
+	onFileCreate: (path: string, initialContent?: string) => void
 	onFolderCreate: (path: string) => void
 	onFileDelete: (path: string) => void
 	onFileRename: (oldPath: string, newPath: string) => void

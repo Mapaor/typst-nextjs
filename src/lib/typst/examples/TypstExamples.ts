@@ -43,6 +43,17 @@ export const TYPST_EXAMPLES: TypstExample[] = [
 			{ path: 'chapters/chapter-1.typ', filePath: '/typst-examples/multi-file/chapters/chapter-1.typ' },
 			{ path: 'chapters/chapter-2.typ', filePath: '/typst-examples/multi-file/chapters/chapter-2.typ' },
 		]
+	},
+	{
+		id: 'using-images',
+		name: 'Using Images',
+		description: 'Demonstrate how to use images in Typst documents',
+		filePath: '/typst-examples/using-images/main.typ',
+		isMultiFile: true,
+		additionalFiles: [
+			{ path: 'cat-image.jpg', filePath: '/typst-examples/using-images/cat-image.jpg' },
+			{ path: 'star-image.png', filePath: '/typst-examples/using-images/star-image.png' },
+		]
 	}
 ]
 
@@ -54,6 +65,22 @@ export async function fetchExample(filePath: string): Promise<string> {
 	if (!response.ok) {
 		throw new Error(`Failed to load example: ${response.statusText}`)
 	}
+	
+	// Check if this is an image file
+	const isImage = /\.(png|jpg|jpeg|svg)$/i.test(filePath)
+	
+	if (isImage) {
+		// For images, convert to base64 data URL
+		const blob = await response.blob()
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader()
+			reader.onloadend = () => resolve(reader.result as string)
+			reader.onerror = reject
+			reader.readAsDataURL(blob)
+		})
+	}
+	
+	// For text files, return as text
 	return await response.text()
 }
 

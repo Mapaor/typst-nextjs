@@ -1,6 +1,7 @@
 'use client'
 
-import { PanelLeftClose, PanelLeft } from 'lucide-react'
+import { useState } from 'react'
+import { PanelLeft, Upload } from 'lucide-react'
 import type { FileExplorerProps } from './types'
 import type { FileNode } from './types'
 import { useFileTree } from './hooks/useFileTree'
@@ -12,6 +13,8 @@ import FileExplorerActions from './FileExplorerActions'
 import CreateItemInput from './CreateItemInput'
 import FolderTreeItem from './FolderTreeItem'
 import FileTreeItem from './FileTreeItem'
+
+const ALLOWED_EXTENSIONS = ['.txt', '.md', '.mdx',  '.typ', '.png', '.jpg', '.jpeg', '.svg', '.ttf', '.otf']
 
 export default function FileExplorer({
 	project,
@@ -25,6 +28,10 @@ export default function FileExplorer({
 	isCollapsed = false,
 	onToggleCollapse,
 }: FileExplorerProps) {
+	const [isDraggingExternal, setIsDraggingExternal] = useState(false)
+	// Track nested drag enter/leave events to properly handle drag state
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	const [dragOverCounter, setDragOverCounter] = useState(0)
 	const { expandedFolders, toggleFolder, expandFolder } = useFileTree()
 	
 	const {
@@ -69,6 +76,99 @@ export default function FileExplorer({
 		}
 	}
 
+	// Helper function to check if file extension is allowed
+	function isAllowedFile(fileName: string): boolean {
+		return ALLOWED_EXTENSIONS.some(ext => fileName.toLowerCase().endsWith(ext))
+	}
+
+	// Helper function to handle external file drops
+	async function handleExternalFileDrop(files: FileList, targetPath: string = '') {
+		for (const file of Array.from(files)) {
+			if (!isAllowedFile(file.name)) {
+				console.warn(`File ${file.name} has unsupported extension. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}`)
+				continue
+			}
+
+			const filePath = targetPath ? `${targetPath}/${file.name}` : file.name
+			
+			// Check if file already exists
+			const fileExists = project.files.some(f => f.path === filePath)
+			if (fileExists) {
+				const overwrite = confirm(`File "${file.name}" already exists. Do you want to overwrite it?`)
+				if (!overwrite) continue
+			}
+
+			try {
+				// Read file content based on type
+				if (file.name.match(/\.(png|jpg|svg)$/i)) {
+					// For images, read as data URL
+					const reader = new FileReader()
+					reader.onload = (e) => {
+						const content = e.target?.result as string
+						onFileCreate(filePath, content)
+					}
+					reader.readAsDataURL(file)
+				} else {
+					// For text files, read as text
+					const reader = new FileReader()
+					reader.onload = (e) => {
+						const content = e.target?.result as string
+						onFileCreate(filePath, content)
+					}
+					reader.readAsText(file)
+				}
+			} catch (error) {
+				console.error(`Failed to upload file ${file.name}:`, error)
+			}
+		}
+	}
+
+	// Handle external drag events
+	function handleExternalDragEnter(e: React.DragEvent) {
+		if (e.dataTransfer.types.includes('Files')) {
+			e.preventDefault()
+			e.stopPropagation()
+			setDragOverCounter(prev => prev + 1)
+			setIsDraggingExternal(true)
+		}
+	}
+
+	function handleExternalDragLeave(e: React.DragEvent) {
+		if (e.dataTransfer.types.includes('Files')) {
+			e.preventDefault()
+			e.stopPropagation()
+			setDragOverCounter(prev => {
+				const newCount = prev - 1
+				if (newCount === 0) {
+					setIsDraggingExternal(false)
+				}
+				return newCount
+			})
+		}
+	}
+
+	function handleExternalDragOver(e: React.DragEvent) {
+		if (e.dataTransfer.types.includes('Files')) {
+			e.preventDefault()
+			e.stopPropagation()
+			e.dataTransfer.dropEffect = 'copy'
+		}
+	}
+
+	async function handleExternalDrop(e: React.DragEvent, targetPath: string = '') {
+		if (e.dataTransfer.types.includes('Files')) {
+			e.preventDefault()
+			e.stopPropagation()
+			setIsDraggingExternal(false)
+			setDragOverCounter(0)
+
+			const files = e.dataTransfer.files
+			if (files.length > 0) {
+				await handleExternalFileDrop(files, targetPath)
+			}
+		}
+	}
+
 	function renderFileTree(nodes: FileNode[], depth = 0): React.ReactNode {
 		return nodes.map(node => {
 			if (node.isFolder) {
@@ -95,8 +195,7 @@ export default function FileExplorer({
 						onRenameChange={setRenameValue}
 						onDelete={() => onFileDelete(node.path)}
 						onDragOver={(e) => handleDragOver(node.path, true, e)}
-						onDrop={(e) => handleDrop(node.path, true, e)}
-					>
+						onDrop={(e) => handleDrop(node.path, true, e)}							onExternalDrop={handleExternalDrop}					>
 						{isExpanded && node.children && renderFileTree(node.children, depth + 1)}
 						{isExpanded && creatingItem?.parentPath === node.path && (
 							<CreateItemInput
@@ -172,18 +271,37 @@ export default function FileExplorer({
 
 			{/* Files List */}
 			<div 
-				className="flex-1 overflow-y-auto"
+				className={`flex-1 overflow-y-auto relative transition-colors ${
+					isDraggingExternal ? 'bg-blue-900/20 border-2 border-dashed border-blue-500' : ''
+				}`}
+				onDragEnter={handleExternalDragEnter}
+				onDragLeave={handleExternalDragLeave}
 				onDragOver={(e) => {
-					if (draggedItem && !e.defaultPrevented) {
+					if (e.dataTransfer.types.includes('Files')) {
+						handleExternalDragOver(e)
+					} else if (draggedItem && !e.defaultPrevented) {
 						handleDragOver('', false, e)
 					}
 				}}
 				onDrop={(e) => {
-					if (draggedItem && !e.defaultPrevented) {
+					if (e.dataTransfer.types.includes('Files')) {
+						handleExternalDrop(e, '')
+					} else if (draggedItem && !e.defaultPrevented) {
 						handleDrop('', false, e)
 					}
 				}}
 			>
+				{isDraggingExternal && (
+					<div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 pointer-events-none z-10">
+						<div className="text-center">
+							<Upload className="w-12 h-12 text-blue-400 mx-auto mb-2" />
+							<p className="text-blue-300 font-medium">Drop files to upload</p>
+							<p className="text-gray-400 text-sm mt-1">
+								Supported: {ALLOWED_EXTENSIONS.join(', ')}
+							</p>
+						</div>
+					</div>
+				)}
 				{renderFileTree(fileTree)}
 				{creatingItem?.parentPath === '' && (
 					<CreateItemInput

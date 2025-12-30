@@ -48,7 +48,35 @@ export class TypstCompilerService {
 		this.notifyStatusChange('compiling')
 
 		try {
-			const result = await this.client.compilePdf(files, mainFile, {})
+			// Separate text files from images
+			const textFiles: Record<string, string> = {}
+			const images: Record<string, Uint8Array<ArrayBuffer>> = {}
+
+			for (const [path, content] of Object.entries(files)) {
+				// Check if this is an image file (data URL)
+				if (content.startsWith('data:image/')) {
+					// Extract base64 data and convert to Uint8Array
+					const base64Match = content.match(/^data:image\/[^;]+;base64,(.+)$/)
+					if (base64Match) {
+						try {
+							const base64Data = base64Match[1]
+							const binaryString = atob(base64Data)
+							const bytes = new Uint8Array(binaryString.length)
+							for (let i = 0; i < binaryString.length; i++) {
+								bytes[i] = binaryString.charCodeAt(i)
+							}
+							images[path] = bytes as Uint8Array<ArrayBuffer>
+						} catch (error) {
+							console.error(`Failed to decode image ${path}:`, error)
+						}
+					}
+				} else {
+					// Regular text file
+					textFiles[path] = content
+				}
+			}
+
+			const result = await this.client.compilePdf(textFiles, mainFile, images)
 
 			// Check if this compile was superseded by a newer one
 			if (seq !== this.compileSeq) {
