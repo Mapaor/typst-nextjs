@@ -8,11 +8,11 @@ import { useFileTree } from './hooks/useFileTree'
 import { useFileOperations } from './hooks/useFileOperations'
 import { useDragAndDrop } from './hooks/useDragAndDrop'
 import { buildFileTree } from './utils/buildFileTree'
-import FileExplorerHeader from './FileExplorerHeader'
-import FileExplorerActions from './FileExplorerActions'
-import CreateItemInput from './CreateItemInput'
-import FolderTreeItem from './FolderTreeItem'
-import FileTreeItem from './FileTreeItem'
+import FileExplorerHeader from './components/FileExplorerHeader'
+import FileExplorerActions from './components/FileExplorerActions'
+import CreateItemInput from './components/CreateItemInput'
+import FolderTreeItem from './components/FolderTreeItem'
+import FileTreeItem from './components/FileTreeItem'
 
 const ALLOWED_EXTENSIONS = ['.txt', '.md', '.mdx',  '.typ', '.png', '.jpg', '.jpeg', '.svg', '.ttf', '.otf']
 

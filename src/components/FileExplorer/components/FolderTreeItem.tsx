@@ -1,5 +1,5 @@
 import { Folder, ChevronRight, ChevronDown, Edit2, Trash2, Check, X } from 'lucide-react'
-import type { FileNode } from './types'
+import type { FileNode } from '../types'
 
 interface FolderTreeItemProps {
 	node: FileNode
