@@ -28,36 +28,37 @@ export default function TypstEditorHeader({
 	onLoadExample,
 }: TypstEditorHeaderProps) {
 	const getStatusText = (): React.ReactNode => {
+		const textSizeClass = isMobile ? 'text-xs' : ''
 		switch (status) {
 			case 'compiling':
 				return (
-					<span className="flex items-center gap-2">
+					<span className={`flex items-center gap-2 ${textSizeClass}`}>
 						<Loader2 className="w-4 h-4 animate-spin" />
 						{hasCompiled ? 'Compiling...' : 'Initializing compiler...'}
 					</span>
 				)
 			case 'done':
 				return (
-					<span className="flex items-center gap-2">
+					<span className={`flex items-center gap-2 ${textSizeClass}`}>
 						<CheckCircle2 className="w-4 h-4 text-green-500" />
 						Compiled
 					</span>
 				)
 			case 'error':
 				return (
-					<span className="flex items-center gap-2">
+					<span className={`flex items-center gap-2 ${textSizeClass}`}>
 						<XCircle className="w-4 h-4 text-red-500" />
 						Error
 					</span>
 				)
 			case 'idle':
 				return hasCompiled ? (
-					<span className="flex items-center gap-2">
+					<span className={`flex items-center gap-2 ${textSizeClass}`}>
 						<Check className="w-4 h-4 text-green-500" />
 						Ready
 					</span>
 				) : (
-					<span className="flex items-center gap-2">
+					<span className={`flex items-center gap-2 ${textSizeClass}`}>
 						<Zap className="w-4 h-4 text-blue-500" />
 						Ready to compile
 					</span>
@@ -70,8 +71,20 @@ export default function TypstEditorHeader({
 	return (
 		<div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 px-4 py-3 bg-gray-800 border-b border-gray-700">
 			<div className="flex items-center gap-4">
-				<h1 className="text-xl font-semibold">Typst Online Editor</h1>
-				
+				<div className="flex flex-row justify-left items-center gap-2">
+					<h1 className="text-xl font-semibold">Typst Online Editor</h1>
+					{isMobile && (
+						<a
+							href="https://github.com/Mapaor/typst-online-editor"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="p-2 text-white rounded hover:bg-gray-600 transition-transform duration-200"
+							title="View on GitHub"
+						>
+							<Github className="w-5 h-5" />
+						</a>
+					)}
+				</div>
 				{!isMobile && (
 				<LoadExamplesButton
 					isMobile={isMobile}
@@ -96,7 +109,16 @@ export default function TypstEditorHeader({
 				
 			</div>
 			<div className="flex items-center gap-4">
-				<div className="text-sm">
+				<div className="flex flex-row justify-left items-center gap-2">
+					
+					{isMobile && (
+						<LoadExamplesButton
+						isMobile={isMobile}
+						showExamples={showExamples}
+						onToggleExamples={onToggleExamples}
+						onLoadExample={onLoadExample}
+					/>
+					)}
 					{getStatusText()}
 				</div>
 				{!isMobile && (
@@ -117,25 +139,6 @@ export default function TypstEditorHeader({
 					</button>
 				)}
 			</div>
-			{isMobile && (
-				<div className="flex flex-row justify-left items-center gap-2">
-					<LoadExamplesButton
-						isMobile={isMobile}
-						showExamples={showExamples}
-						onToggleExamples={onToggleExamples}
-						onLoadExample={onLoadExample}
-					/>
-					<a
-						href="https://github.com/Mapaor/typst-online-editor"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="p-2 text-white rounded hover:bg-gray-600 transition-transform duration-200"
-						title="View on GitHub"
-					>
-						<Github className="w-5 h-5" />
-					</a>
-				</div>
-			)}
 		</div>
 	)
 }
