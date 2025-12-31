@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+/* Shiki syntax highlighting - enable text wrapping */
+.shiki,
+.shiki code,
+.shiki pre {
+	white-space: pre-wrap !important;
+}

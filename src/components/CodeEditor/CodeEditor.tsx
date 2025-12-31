@@ -66,7 +66,7 @@ export default function CodeEditor({ filePath, content, onChange }: CodeEditorPr
 
 	// Highlight code immediately
 	useEffect(() => {
-		if (needsHighlighting && highlighterRef.current) {
+		if (needsHighlighting && highlighterRef.current && !isInitializing) {
 			if (!content) {
 				// Clear highlighting when content is empty
 				setHighlightedCode('')
@@ -90,7 +90,7 @@ export default function CodeEditor({ filePath, content, onChange }: CodeEditorPr
 			// Clear highlighting for non-highlighted files
 			setHighlightedCode('')
 		}
-	}, [content, needsHighlighting, isTypFile, highlighterRef])
+	}, [content, needsHighlighting, isTypFile, isInitializing])
 
 	return (
 		<div className="flex flex-col h-full border-r border-gray-700">
@@ -98,7 +98,7 @@ export default function CodeEditor({ filePath, content, onChange }: CodeEditorPr
 				{filePath}
 			</div>
 			
-			<div className="flex-1 overflow-auto">
+			<div className="flex-1 overflow-auto overflow-x-hidden">
 				{/* Loading indicator */}
 				{needsHighlighting && isInitializing && (
 					<div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm z-10">
@@ -114,10 +114,9 @@ export default function CodeEditor({ filePath, content, onChange }: CodeEditorPr
 							tabSize: 4,
 							lineHeight: '1.625',
 							letterSpacing: '0',
-							wordWrap: 'break-word',
 							color: 'transparent',
 							minHeight: '100%',
-							paddingBottom: '100vh' // Ensures pre extends to fill viewport
+							paddingBottom: '100vh', // Ensures pre extends to fill viewport
 						}}
 						aria-hidden="true"
 					>
