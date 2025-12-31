@@ -53,21 +53,6 @@ export default function CodeEditor({ filePath, content, onChange }: CodeEditorPr
 						],
 						themes: ['github-dark']
 					})
-					
-					// Highlight initial content if needed
-					if (content && needsHighlighting) {
-						try {
-							const lang = isTypFile ? 'typst' : 'markdown'
-							const html = highlighterRef.current.codeToHtml(content, {
-								lang,
-								theme: 'github-dark',
-							})
-							const cleanedHtml = html.replace(/background-color:[^;"]*/g, '')
-							setHighlightedCode(cleanedHtml)
-						} catch (error) {
-							console.error('Syntax highlighting error:', error)
-						}
-					}
 				} catch (error) {
 					console.error('Failed to initialize highlighter:', error)
 				} finally {

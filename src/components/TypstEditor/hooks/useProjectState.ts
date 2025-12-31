@@ -11,36 +11,34 @@ const TEMP_PROJECT: Project = {
 }
 
 export function useProjectState(onProjectChange?: (files: Record<string, string>, mainFile: string) => void) {
-	// Use lazy initialization with a function that returns TEMP_PROJECT
-	// This ensures server and client render the same initial state
-	const [currentProject, setCurrentProject] = useState<Project>(() => TEMP_PROJECT)
-	const [activeFilePath, setActiveFilePath] = useState<string>(() => TEMP_PROJECT.mainFile)
-	const [mounted, setMounted] = useState(false)
+	// Always start with TEMP_PROJECT for SSR hydration compatibility
+	const [currentProject, setCurrentProject] = useState<Project>(TEMP_PROJECT)
+	const [activeFilePath, setActiveFilePath] = useState<string>(TEMP_PROJECT.mainFile)
 
-	// Load from storage after mount (client-side only)
+	// Load from storage after hydration (client-side only)
 	useEffect(() => {
-		// Skip if already mounted (prevents double-loading)
-		if (mounted) return
-		
-		setMounted(true)
-		
-		// Hydrate from localStorage
-		const projects = projectStorage.list()
-		if (projects.length > 0) {
-			const mostRecent = projects.sort((a, b) => b.lastModified - a.lastModified)[0]
-			const project = projectStorage.load(mostRecent.id)
-			if (project) {
-				setCurrentProject(project)
-				setActiveFilePath(project.mainFile)
-				return
+		// Use setTimeout to avoid cascading renders during hydration
+		const timer = setTimeout(() => {
+			// Try to load most recent project from storage
+			const projects = projectStorage.list()
+			if (projects.length > 0) {
+				const mostRecent = projects.sort((a, b) => b.lastModified - a.lastModified)[0]
+				const project = projectStorage.load(mostRecent.id)
+				if (project) {
+					setCurrentProject(project)
+					setActiveFilePath(project.mainFile)
+					return
+				}
 			}
-		}
-		// Create new project if none exist
-		const newProject = projectStorage.createNew('My Document')
-		setCurrentProject(newProject)
-		setActiveFilePath(newProject.mainFile)
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []) // Intentionally empty - we want this to run once on mount
+			
+			// Create new project if none exist
+			const newProject = projectStorage.createNew('My Document')
+			setCurrentProject(newProject)
+			setActiveFilePath(newProject.mainFile)
+		}, 0)
+
+		return () => clearTimeout(timer)
+	}, [])
 
 	// Notify parent when project changes
 	useEffect(() => {
