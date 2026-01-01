@@ -20,12 +20,12 @@ export const TYPST_EXAMPLES: TypstExample[] = [
 		description: 'Mathematical formulas and equations',
 		filePath: '/typst-examples/math-expressions/main.typ'
 	},
-	{
-		id: 'report',
-		name: 'Academic Report',
-		description: 'A structured document with sections and formatting',
-		filePath: '/typst-examples/report/main.typ'
-	},
+	// {
+	// 	id: 'report',
+	// 	name: 'Academic Report',
+	// 	description: 'A structured document with sections and formatting',
+	// 	filePath: '/typst-examples/report/main.typ'
+	// },
 	{
 		id: 'using-images',
 		name: 'Using Images',
@@ -35,6 +35,18 @@ export const TYPST_EXAMPLES: TypstExample[] = [
 		additionalFiles: [
 			{ path: 'cat-image.jpg', filePath: '/typst-examples/using-images/cat-image.jpg' },
 			{ path: 'star-image.png', filePath: '/typst-examples/using-images/star-image.png' },
+		]
+	},
+	{
+		id: 'multi-file',
+		name: 'Multi-File Document',
+		description: 'Document with multiple files, imports, and includes',
+		filePath: '/typst-examples/multi-file/main.typ',
+		isMultiFile: true,
+		additionalFiles: [
+			{ path: 'template.typ', filePath: '/typst-examples/multi-file/template.typ' },
+			{ path: 'chapters/chapter-1.typ', filePath: '/typst-examples/multi-file/chapters/chapter-1.typ' },
+			{ path: 'chapters/chapter-2.typ', filePath: '/typst-examples/multi-file/chapters/chapter-2.typ' },
 		]
 	},
 	{
@@ -50,15 +62,20 @@ export const TYPST_EXAMPLES: TypstExample[] = [
 		filePath: '/typst-examples/using-templates/main.typ'
 	},
 	{
-		id: 'multi-file',
-		name: 'Multi-File Document',
-		description: 'Document with multiple files, imports, and includes',
-		filePath: '/typst-examples/multi-file/main.typ',
+		id: 'local-template',
+		name: 'Local Template',
+		description: 'CV template with local modules and layouts',
+		filePath: '/typst-examples/local-template/main.typ',
 		isMultiFile: true,
 		additionalFiles: [
-			{ path: 'template.typ', filePath: '/typst-examples/multi-file/template.typ' },
-			{ path: 'chapters/chapter-1.typ', filePath: '/typst-examples/multi-file/chapters/chapter-1.typ' },
-			{ path: 'chapters/chapter-2.typ', filePath: '/typst-examples/multi-file/chapters/chapter-2.typ' },
+			{ path: 'cv.typ', filePath: '/typst-examples/local-template/cv.typ' },
+			{ path: 'utils.typ', filePath: '/typst-examples/local-template/utils.typ' },
+			{ path: 'example-cv.yml', filePath: '/typst-examples/local-template/example-cv.yml' },
+			{ path: 'layouts/bullet-list.typ', filePath: '/typst-examples/local-template/layouts/bullet-list.typ' },
+			{ path: 'layouts/header.typ', filePath: '/typst-examples/local-template/layouts/header.typ' },
+			{ path: 'layouts/timeline.typ', filePath: '/typst-examples/local-template/layouts/timeline.typ' },
+			{ path: 'layouts/prose.typ', filePath: '/typst-examples/local-template/layouts/prose.typ' },
+			{ path: 'layouts/numbered-list.typ', filePath: '/typst-examples/local-template/layouts/numbered-list.typ' },
 		]
 	},
 	{
