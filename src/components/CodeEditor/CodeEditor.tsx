@@ -18,7 +18,9 @@ export default function CodeEditor({ filePath, content, onChange }: CodeEditorPr
 	const fileExtension = filePath.split('.').pop()?.toLowerCase() || ''
 	const isTypFile = filePath.endsWith('.typ')
 	const isMarkdownFile = ['md', 'mdx'].includes(fileExtension)
-	const needsHighlighting = isTypFile || isMarkdownFile
+	const isJsonFile = fileExtension === 'json'
+	const isYamlFile = ['yaml', 'yml'].includes(fileExtension)
+	const needsHighlighting = isTypFile || isMarkdownFile || isJsonFile || isYamlFile
 	
 	// Detect binary file types
 	const isImageFile = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExtension)
@@ -37,7 +39,7 @@ export default function CodeEditor({ filePath, content, onChange }: CodeEditorPr
 			setIsInitializing(true)
 			const initHighlighter = async () => {
 				try {
-					// Load both Typst and Markdown - we'll always need them
+					// Load all languages we'll need
 					const { bundledLanguages } = await import('shiki')
 					const response = await fetch('/textmate-sintax/typst.tmLanguage.json')
 					const typstGrammar = await response.json()
@@ -49,7 +51,9 @@ export default function CodeEditor({ filePath, content, onChange }: CodeEditorPr
 								scopeName: 'source.typst',
 								...typstGrammar
 							},
-							bundledLanguages.markdown
+							bundledLanguages.markdown,
+							bundledLanguages.json,
+							bundledLanguages.yaml
 						],
 						themes: ['github-dark']
 					})
@@ -74,7 +78,11 @@ export default function CodeEditor({ filePath, content, onChange }: CodeEditorPr
 			}
 			
 			try {
-				const lang = isTypFile ? 'typst' : 'markdown'
+				let lang = 'markdown'
+				if (isTypFile) lang = 'typst'
+				else if (isJsonFile) lang = 'json'
+				else if (isYamlFile) lang = 'yaml'
+				
 				const html = highlighterRef.current.codeToHtml(content, {
 					lang,
 					theme: 'github-dark',
