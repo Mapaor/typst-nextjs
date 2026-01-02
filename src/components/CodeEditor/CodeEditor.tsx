@@ -44,7 +44,8 @@ export default function CodeEditor({ filePath, content, onChange }: CodeEditorPr
 				try {
 					// Load all languages we'll need
 					const { bundledLanguages } = await import('shiki')
-					const response = await fetch('/textmate-sintax/typst.tmLanguage.json')
+					const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+					const response = await fetch(`${publicBasePath}/textmate-sintax/typst.tmLanguage.json`)
 					const typstGrammar = await response.json()
 					
 					highlighterRef.current = await createHighlighter({

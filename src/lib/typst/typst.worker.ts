@@ -68,7 +68,12 @@ const CJK_FONTS: string[] = [
 // OPTION 2: Load from local public folder (CURRENT - Recommended for offline use)
 // Pros: Faster loading, works offline, no external dependencies, predictable performance
 // Cons: Increases bundle size, requires manual updates, uses local storage
-const TYPST_WASM_URL = '/wasm/typst_ts_web_compiler_bg.wasm';
+
+
+// const TYPST_WASM_URL = '/wasm/typst_ts_web_compiler_bg.wasm'; (Same shit but the below line is in case you also export to a static site)
+const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+const TYPST_WASM_URL = `${publicBasePath}/wasm/typst_ts_web_compiler_bg.wasm`;
+
 
 const CORE_FONTS: string[] = [
 	// IBM Plex Sans (Modern UI fonts)
