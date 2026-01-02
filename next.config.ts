@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
   // images: {
   //   unoptimized: true,
   // },
-  // basePath: "/typst-online-editor",
-  // assetPrefix: "/typst-online-editor/",
+  // basePath: "/typst-online-editor-static", // Use the name you want your static repo to be named
+  // assetPrefix: "/typst-online-editor-static",
 };
 
 export default nextConfig;
