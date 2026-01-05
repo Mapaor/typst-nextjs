@@ -31,7 +31,7 @@ And open the localhost URL you get.
 
 The corresponding commands for those but in production mode (the commands that Vercel runs in their server) would be `npm run build` and `npm run start`.
 
-Also if you want you can deploy this as a static site in GitHub Pages. That is done by exporting the NextJS app to static HTML+CSS+JS. Explain in the following guide inside the toggle.
+Also if you want you can deploy this as a static site in GitHub Pages. That is done by exporting the NextJS app to static HTML+CSS+JS, explained in the following toggle.
 <details>
 
 <summary>Deploy as a static site</summary>
